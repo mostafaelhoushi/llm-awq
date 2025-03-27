@@ -59,29 +59,7 @@ def scale_activations(module):
 import torch
 from sklearn.cluster import KMeans
 from joblib import Parallel, delayed
-from tqdm import tqdm
 import numpy as np
-
-# Hook tqdm into joblib
-from joblib.parallel import BatchCompletionCallBack, ParallelBackendBase
-
-class TqdmJoblibProgress:
-    def __init__(self, tqdm_bar):
-        self._tqdm_bar = tqdm_bar
-
-    def __call__(self, *args, **kwargs):
-        self._tqdm_bar.update()
-
-class TqdmParallel(Parallel):
-    def __init__(self, tqdm_bar, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._tqdm_bar = tqdm_bar
-
-    def print_progress(self):
-        pass  # disable joblib's own progress
-
-    def _backend_callback(self, *args, **kwargs):
-        return TqdmJoblibProgress(self._tqdm_bar)
 
 def quantize_row(row: np.ndarray, num_clusters: int) -> np.ndarray:
     row_data = row.reshape(-1, 1)
@@ -93,23 +71,27 @@ def quantize_row(row: np.ndarray, num_clusters: int) -> np.ndarray:
 
 def lut_quantize_rows_parallel(tensor: torch.Tensor, num_clusters: int, n_jobs: int = -1) -> torch.Tensor:
     """
-    Applies LUT quantization in parallel to each row of a 2D tensor using K-Means,
-    with a tqdm progress bar.
+    Applies LUT quantization in parallel to each row of a 2D tensor using K-Means.
+
+    Args:
+        tensor (torch.Tensor): A 2D tensor of shape (rows, cols).
+        num_clusters (int): Number of clusters for each row.
+        n_jobs (int): Number of parallel jobs (-1 = use all cores).
+
+    Returns:
+        torch.Tensor: Quantized tensor with same shape.
     """
     assert tensor.dim() == 2, "Only 2D tensors are supported"
     device = tensor.device
     dtype = tensor.dtype
 
     rows = tensor.cpu().numpy()
-
-    with tqdm(total=len(rows), desc="Quantizing rows") as pbar:
-        quantized_rows = TqdmParallel(tqdm_bar=pbar, n_jobs=n_jobs)(
-            delayed(quantize_row)(row, num_clusters) for row in rows
-        )
+    quantized_rows = Parallel(n_jobs=n_jobs)(
+        delayed(quantize_row)(row, num_clusters) for row in rows
+    )
 
     quantized_tensor = np.stack(quantized_rows, axis=0)
     return torch.tensor(quantized_tensor, dtype=dtype, device=device)
-
 
 def lut_quantize_rows(tensor: torch.Tensor, num_clusters: int) -> torch.Tensor:
     """
@@ -130,7 +112,7 @@ def lut_quantize_rows(tensor: torch.Tensor, num_clusters: int) -> torch.Tensor:
     quantized_rows = []
     matrix = tensor.cpu().numpy()
 
-    for i in tqdm(range(matrix.shape[0]), desc="Rows", position=0, leave=True):
+    for i in tqdm(range(matrix.shape[0]), desc="Rows"):
         row = matrix[i]
         row_data = row.reshape(-1, 1)
         kmeans = KMeans(n_clusters=min(num_clusters, len(row_data)), n_init='auto')
@@ -142,7 +124,7 @@ def lut_quantize_rows(tensor: torch.Tensor, num_clusters: int) -> torch.Tensor:
     quantized_tensor = np.stack(quantized_rows, axis=0)
     return torch.tensor(quantized_tensor, dtype=dtype, device=device)
 
-def any_pseudo_quantize_tensor(tensor, n_bit=8, n_jobs=0):
+def any_pseudo_quantize_tensor(tensor, n_bit=8, n_jobs=-1):
   if n_jobs == 0:
     return lut_quantize_rows(tensor, num_clusters=2**n_bit)
   else:
