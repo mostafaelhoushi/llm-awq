@@ -56,10 +56,101 @@ def scale_activations(module):
         )
         set_op_by_name(module, "mlp.act", act)
 
+import torch
+from sklearn.cluster import KMeans
+from joblib import Parallel, delayed
+from tqdm import tqdm
+import numpy as np
+
+# Hook tqdm into joblib
+from joblib.parallel import BatchCompletionCallBack, ParallelBackendBase
+
+class TqdmJoblibProgress:
+    def __init__(self, tqdm_bar):
+        self._tqdm_bar = tqdm_bar
+
+    def __call__(self, *args, **kwargs):
+        self._tqdm_bar.update()
+
+class TqdmParallel(Parallel):
+    def __init__(self, tqdm_bar, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._tqdm_bar = tqdm_bar
+
+    def print_progress(self):
+        pass  # disable joblib's own progress
+
+    def _backend_callback(self, *args, **kwargs):
+        return TqdmJoblibProgress(self._tqdm_bar)
+
+def quantize_row(row: np.ndarray, num_clusters: int) -> np.ndarray:
+    row_data = row.reshape(-1, 1)
+    n_clusters = min(num_clusters, len(row_data))
+    kmeans = KMeans(n_clusters=n_clusters, n_init='auto')
+    kmeans.fit(row_data)
+    labels = kmeans.predict(row_data)
+    return kmeans.cluster_centers_[labels].flatten()
+
+def lut_quantize_rows_parallel(tensor: torch.Tensor, num_clusters: int, n_jobs: int = -1) -> torch.Tensor:
+    """
+    Applies LUT quantization in parallel to each row of a 2D tensor using K-Means,
+    with a tqdm progress bar.
+    """
+    assert tensor.dim() == 2, "Only 2D tensors are supported"
+    device = tensor.device
+    dtype = tensor.dtype
+
+    rows = tensor.cpu().numpy()
+
+    with tqdm(total=len(rows), desc="Quantizing rows") as pbar:
+        quantized_rows = TqdmParallel(tqdm_bar=pbar, n_jobs=n_jobs)(
+            delayed(quantize_row)(row, num_clusters) for row in rows
+        )
+
+    quantized_tensor = np.stack(quantized_rows, axis=0)
+    return torch.tensor(quantized_tensor, dtype=dtype, device=device)
+
+
+def lut_quantize_rows(tensor: torch.Tensor, num_clusters: int) -> torch.Tensor:
+    """
+    Applies LUT quantization independently to each row of a 2D tensor using K-Means.
+
+    Args:
+        tensor (torch.Tensor): A 2D tensor of shape (rows, cols).
+        num_clusters (int): Number of clusters for each row.
+
+    Returns:
+        torch.Tensor: Quantized tensor of the same shape.
+    """
+    assert tensor.dim() == 2, "Only 2D tensors are supported"
+
+    device = tensor.device
+    dtype = tensor.dtype
+
+    quantized_rows = []
+    matrix = tensor.cpu().numpy()
+
+    for i in tqdm(range(matrix.shape[0]), desc="Rows", position=0, leave=True):
+        row = matrix[i]
+        row_data = row.reshape(-1, 1)
+        kmeans = KMeans(n_clusters=min(num_clusters, len(row_data)), n_init='auto')
+        kmeans.fit(row_data)
+        labels = kmeans.predict(row_data)
+        quantized_row = kmeans.cluster_centers_[labels].flatten()
+        quantized_rows.append(quantized_row)
+
+    quantized_tensor = np.stack(quantized_rows, axis=0)
+    return torch.tensor(quantized_tensor, dtype=dtype, device=device)
+
+def any_pseudo_quantize_tensor(tensor, n_bit=8, n_jobs=0):
+  if n_jobs == 0:
+    return lut_quantize_rows(tensor, num_clusters=2**n_bit)
+  else:
+    return lut_quantize_rows_parallel(tensor, num_clusters=2**n_bit, n_jobs=n_jobs)
 
 # core quantization method (simulated quantization)
 def pseudo_quantize_tensor(
-    w, n_bit=8, zero_point=True, q_group_size=-1, inplace=False, get_scale_zp=False
+    w, n_bit=8, zero_point=True, q_group_size=-1, inplace=False, get_scale_zp=False, numeric_type="int",
 ):
     org_w_shape = w.shape
     if q_group_size > 0:
@@ -85,13 +176,29 @@ def pseudo_quantize_tensor(
     assert torch.isnan(scales).sum() == 0
     assert torch.isnan(w).sum() == 0
 
+    assert inplace == False, "We have not updated the inplace logic"
     if inplace:
         (
             (w.div_(scales).round_().add_(zeros)).clamp_(min_int, max_int).sub_(zeros)
         ).mul_(scales)
     else:
+        w_scaled = w / scales
+        if numeric_type == "int":
+          w_rounded = torch.round(w_scaled)
+        elif numeric_type == "nf4":
+          import bitsandbytes
+          w_nf4, state_nf4 = bitsandbytes.functional.quantize_nf4(w_scaled, blocksize=q_group_size)
+          w_rounded = bitsandbytes.functional.dequantize_nf4(w_nf4, quant_state=state_nf4, blocksize=q_group_size)
+        elif numeric_type == "fp4":
+          import bitsandbytes
+          w_fp4, state_fp4 = bitsandbytes.functional.quantize_fp4(w_scaled, blocksize=q_group_size)
+          w_rounded = bitsandbytes.functional.dequantize_fp4(w_fp4, quant_state=state_fp4, blocksize=q_group_size)
+        elif numeric_type == "any":
+          w_rounded = any_pseudo_quantize_tensor(w_scaled.view(org_w_shape)).view(w_scaled.shape)
+        else:
+          raise ValueError(f"Numeric type {numeric_type} not supported.")
         w = (
-            torch.clamp(torch.round(w / scales) + zeros, min_int, max_int) - zeros
+            torch.clamp(w_rounded + zeros, min_int, max_int) - zeros
         ) * scales
     assert torch.isnan(w).sum() == 0
 

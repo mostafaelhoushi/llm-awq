@@ -50,6 +50,7 @@ parser.add_argument(
 # quantization config
 parser.add_argument("--w_bit", type=int, default=None)
 parser.add_argument("--q_group_size", type=int, default=-1)
+parser.add_argument("--numeric_type", type=str, default="int")
 parser.add_argument("--no_zero_point", action="store_true", help="disable zero_point")
 parser.add_argument("--q_backend", type=str, default="fake", choices=["fake", "real"])
 # save/load real quantized weights
@@ -113,6 +114,7 @@ if args.auto_parallel:
 q_config = {
     "zero_point": not args.no_zero_point,  # by default True
     "q_group_size": args.q_group_size,  # whether to use group quantization
+    "numeric_type": args.numeric_type
 }
 print("Quantization config:", q_config)
 
