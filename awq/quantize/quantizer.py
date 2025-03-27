@@ -194,7 +194,7 @@ def pseudo_quantize_tensor(
           w_fp4, state_fp4 = bitsandbytes.functional.quantize_fp4(w_scaled, blocksize=q_group_size)
           w_rounded = bitsandbytes.functional.dequantize_fp4(w_fp4, quant_state=state_fp4, blocksize=q_group_size)
         elif numeric_type == "any":
-          w_rounded = any_pseudo_quantize_tensor(w_scaled.view(org_w_shape)).view(w_scaled.shape)
+          w_rounded = any_pseudo_quantize_tensor(w_scaled.view(org_w_shape)).view(w_scaled.shape).to(w)
         else:
           raise ValueError(f"Numeric type {numeric_type} not supported.")
         w = (

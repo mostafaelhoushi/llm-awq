@@ -48,3 +48,16 @@ python -m awq.entry --model_path facebook/opt-125m \
 ```
 30.7903995513916
 
+## AWQ - ANY4
+```
+python -m awq.entry --model_path facebook/opt-125m \
+    --w_bit 4 --q_group_size 128 --numeric_type any \
+    --run_awq --dump_awq awq_cache/opt-125m-w4-g128-any4.pt
+
+python -m awq.entry --model_path facebook/opt-125m \
+    --tasks wikitext \
+    --w_bit 4 --q_group_size 128 --numeric_type any \
+    --load_awq awq_cache/opt-125m-w4-g128-any4.pt \
+    --q_backend fake
+```
+
