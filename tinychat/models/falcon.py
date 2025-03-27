@@ -8,7 +8,7 @@ import math
 import torch
 from torch import nn
 import torch.nn.functional as F
-import awq_inference_engine
+# import awq_inference_engine
 
 import tinychat.utils.constants
 

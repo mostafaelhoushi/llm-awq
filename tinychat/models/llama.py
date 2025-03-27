@@ -8,7 +8,7 @@ import math
 import torch
 from torch import nn
 import torch.nn.functional as F
-import awq_inference_engine
+# import awq_inference_engine
 from transformers.models.llama.modeling_llama import LlamaRotaryEmbedding
 
 # from flash_attn.flash_attn_interface import flash_attn_unpadded_func
@@ -18,7 +18,7 @@ import tinychat.utils.constants
 max_batch_size = tinychat.utils.constants.max_batch_size
 multiple_of = tinychat.utils.constants.llama_multiple_of
 max_seq_len = tinychat.utils.constants.max_seq_len
-from flash_attn import flash_attn_func
+# from flash_attn import flash_attn_func
 
 
 class RMSNorm(torch.nn.Module):

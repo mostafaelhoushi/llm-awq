@@ -8,7 +8,7 @@ import math
 import torch
 from torch import nn
 import torch.nn.functional as F
-import awq_inference_engine
+# import awq_inference_engine
 from transformers.models.llama.modeling_llama import LlamaRotaryEmbedding
 
 # from flash_attn.flash_attn_interface import flash_attn_unpadded_func
