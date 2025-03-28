@@ -146,3 +146,4 @@ python -m awq.entry --model_path meta-llama/Llama-2-7b-hf \
     --load_awq awq_cache/llama2-7b-w4-g128.pt \
     --q_backend fake
 ```
+5.50054931640625
