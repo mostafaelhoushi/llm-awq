@@ -147,3 +147,81 @@ python -m awq.entry --model_path meta-llama/Llama-2-7b-hf \
     --q_backend fake
 ```
 5.50054931640625
+
+# Llama3 8B
+```
+python -m awq.entry --model_path meta-llama/Meta-Llama-3-8B \
+    --tasks wikitext
+```
+6.135840892791748
+
+## AWQ - INT4
+```
+python -m awq.entry --model_path meta-llama/Meta-Llama-3-8B \
+    --w_bit 4 --q_group_size 128 \
+    --run_awq --dump_awq awq_cache/llama3-8b-w4-g128.pt
+
+python -m awq.entry --model_path meta-llama/Meta-Llama-3-8B \
+    --tasks wikitext \
+    --w_bit 4 --q_group_size 128 \
+    --load_awq awq_cache/llama3-8b-w4-g128.pt \
+    --q_backend fake
+```
+6.531612873077393
+
+
+## AWQ - NF4
+```
+python -m awq.entry --model_path meta-llama/Meta-Llama-3-8B \
+    --tasks wikitext \
+    --w_bit 4 --q_group_size 128 --numeric_type nf4 \
+    --load_awq awq_cache/llama3-8b-w4-g128.pt \
+    --q_backend fake
+```
+6.549849987030029
+
+```
+python -m awq.entry --model_path meta-llama/Meta-Llama-3-8B \
+    --w_bit 4 --q_group_size 128 --numeric_type nf4 \
+    --run_awq --dump_awq awq_cache/llama3-8b-w4-g128-nf4.pt
+
+python -m awq.entry --model_path meta-llama/Meta-Llama-3-8B \
+    --tasks wikitext \
+    --w_bit 4 --q_group_size 128 --numeric_type nf4 \
+    --load_awq awq_cache/llama3-8b-w4-g128-nf4.pt \
+    --q_backend fake
+```
+6.508485317230225
+
+## AWQ - FP4
+```
+python -m awq.entry --model_path meta-llama/Meta-Llama-3-8B \
+    --tasks wikitext \
+    --w_bit 4 --q_group_size 128 --numeric_type fp4 \
+    --load_awq awq_cache/llama3-8b-w4-g128.pt \
+    --q_backend fake
+```
+6.858159065246582
+
+```
+python -m awq.entry --model_path meta-llama/Meta-Llama-3-8B \
+    --w_bit 4 --q_group_size 128 --numeric_type fp4 \
+    --run_awq --dump_awq awq_cache/llama3-8b-w4-g128-fp4.pt
+
+python -m awq.entry --model_path meta-llama/Meta-Llama-3-8B \
+    --tasks wikitext \
+    --w_bit 4 --q_group_size 128 --numeric_type fp4 \
+    --load_awq awq_cache/llama3-8b-w4-g128-fp4.pt \
+    --q_backend fake
+```
+6.840137481689453
+
+## AWQ - ANY4
+```
+python -m awq.entry --model_path meta-llama/Meta-Llama-3-8B \
+    --tasks wikitext \
+    --w_bit 4 --q_group_size 128 --numeric_type any \
+    --load_awq awq_cache/llama3-8b-w4-g128.pt \
+    --q_backend fake
+```
+6.191517353057861
