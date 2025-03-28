@@ -234,3 +234,18 @@ python -m awq.entry --model_path meta-llama/Meta-Llama-3-8B \
     --q_backend fake
 ```
 6.191517353057861
+
+## AWQ - INT2
+```
+python -m awq.entry --model_path meta-llama/Meta-Llama-3-8B \
+    --w_bit 2 --q_group_size 128 \
+    --run_awq --dump_awq awq_cache/llama3-8b-w2-g128.pt
+
+python -m awq.entry --model_path meta-llama/Meta-Llama-3-8B \
+    --tasks wikitext \
+    --w_bit 2 --q_group_size 128 \
+    --load_awq awq_cache/llama3-8b-w2-g128.pt \
+    --q_backend fake
+```
+1706289.375
+
