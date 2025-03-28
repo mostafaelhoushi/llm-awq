@@ -6,6 +6,24 @@ python -m awq.entry --model_path facebook/opt-125m \
 ```
 27.65590476989746
 
+## INT4
+```
+python -m awq.entry --model_path facebook/opt-125m \
+    --tasks wikitext \
+    --w_bit 4 --q_group_size 128 \
+    --q_backend fake
+```
+30.472251892089844
+
+## NF4
+```
+python -m awq.entry --model_path facebook/opt-125m \
+    --tasks wikitext \
+    --w_bit 4 --q_group_size 128 --numeric_type nf4 \
+    --q_backend fake
+```
+31.715574264526367
+
 ## ANY4
 ```
 python -m awq.entry --model_path facebook/opt-125m \
@@ -13,7 +31,7 @@ python -m awq.entry --model_path facebook/opt-125m \
     --w_bit 4 --q_group_size 128 --numeric_type any \
     --q_backend fake
 ```
-30.385984420776367
+31.367944717407227
 
 ## AWQ - INT4
 ```

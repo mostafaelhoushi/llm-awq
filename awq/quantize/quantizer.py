@@ -130,6 +130,25 @@ def any_pseudo_quantize_tensor(tensor, n_bit=8, n_jobs=-1):
   else:
     return lut_quantize_rows_parallel(tensor, num_clusters=2**n_bit, n_jobs=n_jobs)
 
+def nf4_round(x):
+  nf4_lut = [-1.0, -0.6961928009986877, -0.5250730514526367, -0.39491748809814453, -0.28444138169288635, -0.18477343022823334, -0.09105003625154495, 0.0, 0.07958029955625534, 0.16093020141124725, 0.24611230194568634, 0.33791524171829224, 0.44070982933044434, 0.5626170039176941, 0.7229568362236023, 1.0]
+  # List of allowed values
+  value_list = nf4_lut
+
+  # Convert list to tensor for broadcasting
+  values = torch.tensor(value_list).to(x)
+
+  # Compute absolute difference: shape (len(x), len(values))
+  diff = torch.abs(x.flatten().unsqueeze(1) - values)
+
+  # Get the index of the closest value
+  nearest_indices = torch.argmin(diff, dim=1)
+
+  # Use indices to index into original value list
+  x_rounded = values[nearest_indices]
+
+  return x_rounded.view(x.shape)
+
 # core quantization method (simulated quantization)
 def pseudo_quantize_tensor(
     w, n_bit=8, zero_point=True, q_group_size=-1, inplace=False, get_scale_zp=False, numeric_type="int",
@@ -164,26 +183,33 @@ def pseudo_quantize_tensor(
             (w.div_(scales).round_().add_(zeros)).clamp_(min_int, max_int).sub_(zeros)
         ).mul_(scales)
     else:
-        w_scaled = w / scales
         if numeric_type == "int":
-          w_rounded = torch.round(w_scaled)
+          w_q = torch.clamp(torch.round(w / scales) + zeros, min_int, max_int)
         elif numeric_type == "nf4":
           assert n_bit == 4
           import bitsandbytes
-          w_nf4, state_nf4 = bitsandbytes.functional.quantize_nf4(w_scaled, blocksize=q_group_size)
-          w_rounded = bitsandbytes.functional.dequantize_nf4(w_nf4, quant_state=state_nf4, blocksize=q_group_size)
+          w_scaled = torch.clamp((w / scales) + zeros, min_int, max_int)
+          # scale to -1 to +1
+          w_normalized = 2 * (w_scaled - min_int) / (max_int - min_int) - 1
+          w_nf4_deq = nf4_round(w_normalized)
+          # scale to min_int and max_int
+          w_q = (w_nf4_deq + 1) * (max_int - min_int) / 2 + min_int
         elif numeric_type == "fp4":
           assert n_bit == 4
           import bitsandbytes
-          w_fp4, state_fp4 = bitsandbytes.functional.quantize_fp4(w_scaled, blocksize=q_group_size)
-          w_rounded = bitsandbytes.functional.dequantize_fp4(w_fp4, quant_state=state_fp4, blocksize=q_group_size)
+          w_scaled = torch.clamp((w / scales) + zeros, min_int, max_int)
+          # scale to -1 to +1
+          w_normalized = 2 * (w_scaled - min_int) / (max_int - min_int) - 1
+          w_fp4, state_fp4 = bitsandbytes.functional.quantize_fp4(w_normalized, blocksize=q_group_size)
+          w_fp4_deq = bitsandbytes.functional.dequantize_fp4(w_fp4, quant_state=state_fp4, blocksize=q_group_size)
+          # scale to min_int and max_int
+          w_q = (w_fp4_deq + 1) * (max_int - min_int) / 2 + min_int
         elif numeric_type == "any":
-          w_rounded = any_pseudo_quantize_tensor(w_scaled.view(org_w_shape), n_bit=n_bit).view(w_scaled.shape).to(w)
+          w_scaled = torch.clamp((w / scales) + zeros, min_int, max_int)
+          w_q = any_pseudo_quantize_tensor(w_scaled.view(org_w_shape), n_bit=n_bit).view(w_scaled.shape).to(w)
         else:
           raise ValueError(f"Numeric type {numeric_type} not supported.")
-        w = (
-            torch.clamp(w_rounded + zeros, min_int, max_int) - zeros
-        ) * scales
+        w = (w_q - zeros) * scales
     assert torch.isnan(w).sum() == 0
 
     w = w.reshape(org_w_shape)
