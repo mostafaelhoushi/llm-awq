@@ -124,7 +124,7 @@ def lut_quantize_rows(tensor: torch.Tensor, num_clusters: int) -> torch.Tensor:
     quantized_tensor = np.stack(quantized_rows, axis=0)
     return torch.tensor(quantized_tensor, dtype=dtype, device=device)
 
-def any_pseudo_quantize_tensor(tensor, n_bit=8, n_jobs=-1):
+def any_lut_quantize_tensor(tensor, n_bit=8, n_jobs=-1):
   if n_jobs == 0:
     return lut_quantize_rows(tensor, num_clusters=2**n_bit)
   else:
@@ -153,6 +153,28 @@ def nf4_round(x):
 def pseudo_quantize_tensor(
     w, n_bit=8, zero_point=True, q_group_size=-1, inplace=False, get_scale_zp=False, numeric_type="int",
 ):
+    if numeric_type == "int":
+        return pseudo_int_quantize_tensor(w, n_bit=n_bit, zero_point=zero_point, q_group_size=q_group_size, inplace=inplace, get_scale_zp=get_scale_zp)
+    elif numeric_type == "any":
+        assert inplace is False
+        return pseudo_any_quantize_tensor(w, n_bit=n_bit, zero_point=zero_point, q_group_size=q_group_size, get_scale_zp=get_scale_zp)
+    elif numeric_type == "nf4":
+        assert n_bit == 4
+        assert zero_point is False
+        assert inplace is False
+        return pseudo_nf4_quantize_tensor(w, q_group_size=q_group_size, get_scale_zp=get_scale_zp)
+    elif numeric_type == "fp4":
+        assert n_bit == 4
+        assert zero_point is False
+        assert inplace is False
+        return pseudo_fp4_quantize_tensor(w, q_group_size=q_group_size, get_scale_zp=get_scale_zp)
+    else:
+    
+        raise ValueError(f"Unsupported numeric_type {numeric_type}.")
+
+def pseudo_int_quantize_tensor(
+    w, n_bit=8, zero_point=True, q_group_size=-1, inplace=False, get_scale_zp=False,
+):
     org_w_shape = w.shape
     if q_group_size > 0:
         assert org_w_shape[-1] % q_group_size == 0
@@ -177,39 +199,14 @@ def pseudo_quantize_tensor(
     assert torch.isnan(scales).sum() == 0
     assert torch.isnan(w).sum() == 0
 
-    assert inplace == False, "We have not updated the inplace logic"
     if inplace:
         (
             (w.div_(scales).round_().add_(zeros)).clamp_(min_int, max_int).sub_(zeros)
         ).mul_(scales)
     else:
-        if numeric_type == "int":
-          w_q = torch.clamp(torch.round(w / scales) + zeros, min_int, max_int)
-        elif numeric_type == "nf4":
-          assert n_bit == 4
-          import bitsandbytes
-          w_scaled = torch.clamp((w / scales) + zeros, min_int, max_int)
-          # scale to -1 to +1
-          w_normalized = 2 * (w_scaled - min_int) / (max_int - min_int) - 1
-          w_nf4_deq = nf4_round(w_normalized)
-          # scale to min_int and max_int
-          w_q = (w_nf4_deq + 1) * (max_int - min_int) / 2 + min_int
-        elif numeric_type == "fp4":
-          assert n_bit == 4
-          import bitsandbytes
-          w_scaled = torch.clamp((w / scales) + zeros, min_int, max_int)
-          # scale to -1 to +1
-          w_normalized = 2 * (w_scaled - min_int) / (max_int - min_int) - 1
-          w_fp4, state_fp4 = bitsandbytes.functional.quantize_fp4(w_normalized, blocksize=q_group_size)
-          w_fp4_deq = bitsandbytes.functional.dequantize_fp4(w_fp4, quant_state=state_fp4, blocksize=q_group_size)
-          # scale to min_int and max_int
-          w_q = (w_fp4_deq + 1) * (max_int - min_int) / 2 + min_int
-        elif numeric_type == "any":
-          w_scaled = torch.clamp((w / scales) + zeros, min_int, max_int)
-          w_q = any_pseudo_quantize_tensor(w_scaled.view(org_w_shape), n_bit=n_bit).view(w_scaled.shape).to(w)
-        else:
-          raise ValueError(f"Numeric type {numeric_type} not supported.")
-        w = (w_q - zeros) * scales
+        w = (
+            torch.clamp(torch.round(w / scales) + zeros, min_int, max_int) - zeros
+        ) * scales
     assert torch.isnan(w).sum() == 0
 
     w = w.reshape(org_w_shape)
@@ -219,6 +216,75 @@ def pseudo_quantize_tensor(
     else:
         return w
 
+def pseudo_nf4_quantize_tensor(
+    w, q_group_size=-1, get_scale_zp=False,
+):
+    import bitsandbytes
+    w_nf4, state_nf4 = bitsandbytes.functional.quantize_nf4(w, blocksize=q_group_size)
+    w_deq = bitsandbytes.functional.dequantize_nf4(w_nf4, quant_state=state_nf4, blocksize=q_group_size)
+
+    if get_scale_zp:
+        return w_deq, state_nf4
+    else:
+        return w_deq
+    
+def pseudo_fp4_quantize_tensor(
+    w, q_group_size=-1, get_scale_zp=False,
+):
+    import bitsandbytes
+    w_fp4, state_fp4 = bitsandbytes.functional.quantize_fp4(w, blocksize=q_group_size)
+    w_deq = bitsandbytes.functional.dequantize_fp4(w_fp4, quant_state=state_fp4, blocksize=q_group_size)
+
+    if get_scale_zp:
+        return w_deq, state_fp4
+    else:
+        return w_deq
+
+def pseudo_any_quantize_tensor(
+    w, n_bit=8, zero_point=True, q_group_size=-1, get_scale_zp=False,
+):
+    org_w_shape = w.shape
+    if q_group_size > 0:
+        assert org_w_shape[-1] % q_group_size == 0
+        w = w.reshape(-1, q_group_size)
+    assert w.dim() == 2
+    if zero_point:
+        max_val = w.amax(dim=1, keepdim=True)
+        min_val = w.amin(dim=1, keepdim=True)
+        amax_val = w.abs().amax(dim=1, keepdim=True)
+        max_int = 2**n_bit - 1
+        min_int = 0
+        scales = (max_val - min_val) / (max_int - min_int)
+        bias = min_int - min_val / scales
+        zeros = bias
+        # check
+        # xq = x / scales + bias
+        # min_val_q = min_val / scales + min_int - min_val / scales = min_int
+        # max_val_q = max_val / scales + min_int - min_val / scales = min_int + (max_val - min_val)/scales = min_int + (max_int - min_int) = max_int
+    else:  # we actually never used this
+        assert min_val is None
+        max_val = w.abs().amax(dim=1, keepdim=True)
+        max_val = max_val.clamp(min=1e-5)
+        max_int = 2 ** (n_bit - 1) - 1
+        min_int = -(2 ** (n_bit - 1))
+        scales = max_val / max_int
+        zeros = 0
+
+    assert torch.isnan(scales).sum() == 0
+    assert torch.isnan(w).sum() == 0
+
+    wscaled = w / scales + zeros
+    # TODO: replace round() with LUT
+    wq = any_lut_quantize_tensor(wscaled, n_bit=n_bit, n_jobs=-1)
+    wdeq = (wq - zeros) * scales
+    assert torch.isnan(wdeq).sum() == 0
+
+    w = wdeq.reshape(org_w_shape)
+
+    if get_scale_zp:
+        return w, scales.view(w.shape[0], -1), zeros.view(w.shape[0], -1)
+    else:
+        return w
 
 @torch.no_grad()
 def pseudo_quantize_model_weight(

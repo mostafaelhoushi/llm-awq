@@ -4,7 +4,7 @@
 python -m awq.entry --model_path facebook/opt-125m \
     --tasks wikitext
 ```
-27.65590476989746
+27.655839920043945
 
 ## INT4
 ```
@@ -15,14 +15,23 @@ python -m awq.entry --model_path facebook/opt-125m \
 ```
 30.472251892089844
 
+## FP4
+```
+python -m awq.entry --model_path facebook/opt-125m \
+    --tasks wikitext \
+    --w_bit 4 --q_group_size 128 --numeric_type fp4 --no_zero_point \
+    --q_backend fake
+```
+32.930572509765625
+
 ## NF4
 ```
 python -m awq.entry --model_path facebook/opt-125m \
     --tasks wikitext \
-    --w_bit 4 --q_group_size 128 --numeric_type nf4 \
+    --w_bit 4 --q_group_size 128 --numeric_type nf4 --no_zero_point \
     --q_backend fake
 ```
-31.715574264526367
+29.85503578186035
 
 ## ANY4
 ```
@@ -31,7 +40,7 @@ python -m awq.entry --model_path facebook/opt-125m \
     --w_bit 4 --q_group_size 128 --numeric_type any \
     --q_backend fake
 ```
-31.367944717407227
+29.306127548217773
 
 ## AWQ - INT4
 ```
@@ -50,30 +59,39 @@ python -m awq.entry --model_path facebook/opt-125m \
 ## AWQ - NF4
 ```
 python -m awq.entry --model_path facebook/opt-125m \
-    --w_bit 4 --q_group_size 128 --numeric_type nf4 \
+    --tasks wikitext \
+    --w_bit 4 --q_group_size 128 --numeric_type nf4 --no_zero_point \
+    --load_awq awq_cache/opt-125m-w4-g128.pt \
+    --q_backend fake
+```
+29.06452178955078
+
+```
+python -m awq.entry --model_path facebook/opt-125m \
+    --w_bit 4 --q_group_size 128 --numeric_type nf4 --no_zero_point \
     --run_awq --dump_awq awq_cache/opt-125m-w4-g128-nf4.pt
 
 python -m awq.entry --model_path facebook/opt-125m \
     --tasks wikitext \
-    --w_bit 4 --q_group_size 128 --numeric_type nf4 \
+    --w_bit 4 --q_group_size 128 --numeric_type nf4 --no_zero_point \
     --load_awq awq_cache/opt-125m-w4-g128-nf4.pt \
     --q_backend fake
 ```
-29.075883865356445
+29.116846084594727
 
 ## AWQ - FP4
 ```
 python -m awq.entry --model_path facebook/opt-125m \
-    --w_bit 4 --q_group_size 128 --numeric_type fp4 \
+    --w_bit 4 --q_group_size 128 --numeric_type fp4 --no_zero_point \
     --run_awq --dump_awq awq_cache/opt-125m-w4-g128-fp4.pt
 
 python -m awq.entry --model_path facebook/opt-125m \
     --tasks wikitext \
-    --w_bit 4 --q_group_size 128 --numeric_type fp4 \
+    --w_bit 4 --q_group_size 128 --numeric_type fp4 --no_zero_point \
     --load_awq awq_cache/opt-125m-w4-g128-fp4.pt \
     --q_backend fake
 ```
-30.7903995513916
+30.66132926940918
 
 ## AWQ - ANY4
 ```
@@ -83,7 +101,7 @@ python -m awq.entry --model_path facebook/opt-125m \
     --load_awq awq_cache/opt-125m-w4-g128.pt \
     --q_backend fake
 ```
-27.695764541625977
+75.20079803466797
 
 ```
 python -m awq.entry --model_path facebook/opt-125m \
@@ -123,43 +141,43 @@ python -m awq.entry --model_path meta-llama/Llama-2-7b-hf \
 ```
 python -m awq.entry --model_path meta-llama/Llama-2-7b-hf \
     --tasks wikitext \
-    --w_bit 4 --q_group_size 128 --numeric_type nf4 \
+    --w_bit 4 --q_group_size 128 --numeric_type nf4 --no_zero_point \
     --load_awq awq_cache/llama2-7b-w4-g128.pt \
     --q_backend fake
 ```
-5.636749267578125
+5.618524074554443
 
 ```
 python -m awq.entry --model_path meta-llama/Llama-2-7b-hf \
-    --w_bit 4 --q_group_size 128 --numeric_type nf4 \
+    --w_bit 4 --q_group_size 128 --numeric_type nf4 --no_zero_point \
     --run_awq --dump_awq awq_cache/llama2-7b-w4-g128-nf4.pt
 
 python -m awq.entry --model_path meta-llama/Llama-2-7b-hf \
     --tasks wikitext \
-    --w_bit 4 --q_group_size 128 --numeric_type nf4 \
+    --w_bit 4 --q_group_size 128 --numeric_type nf4 --no_zero_point \
     --load_awq awq_cache/llama2-7b-w4-g128-nf4.pt \
     --q_backend fake
 ```
-5.594175338745117
+5.578024387359619
 
 ## AWQ - FP4
 ```
 python -m awq.entry --model_path meta-llama/Llama-2-7b-hf \
     --tasks wikitext \
-    --w_bit 4 --q_group_size 128 --numeric_type fp4 \
+    --w_bit 4 --q_group_size 128 --numeric_type fp4 --no_zero_point \
     --load_awq awq_cache/llama2-7b-w4-g128.pt \
     --q_backend fake
 ```
-5.739681720733643
+5.7344818115234375
 
 ```
 python -m awq.entry --model_path meta-llama/Llama-2-7b-hf \
-    --w_bit 4 --q_group_size 128 --numeric_type fp4 \
+    --w_bit 4 --q_group_size 128 --numeric_type fp4 --no_zero_point \
     --run_awq --dump_awq awq_cache/llama2-7b-w4-g128-fp4.pt
 
 python -m awq.entry --model_path meta-llama/Llama-2-7b-hf \
     --tasks wikitext \
-    --w_bit 4 --q_group_size 128 --numeric_type fp4 \
+    --w_bit 4 --q_group_size 128 --numeric_type fp4 --no_zero_point \
     --load_awq awq_cache/llama2-7b-w4-g128-fp4.pt \
     --q_backend fake
 ```
@@ -201,24 +219,24 @@ python -m awq.entry --model_path meta-llama/Meta-Llama-3-8B \
 ```
 python -m awq.entry --model_path meta-llama/Meta-Llama-3-8B \
     --tasks wikitext \
-    --w_bit 4 --q_group_size 128 --numeric_type nf4 \
+    --w_bit 4 --q_group_size 128 --numeric_type nf4 --no_zero_point \
     --load_awq awq_cache/llama3-8b-w4-g128.pt \
     --q_backend fake
 ```
-6.549849987030029
+6.547260284423828
 
 ```
 python -m awq.entry --model_path meta-llama/Meta-Llama-3-8B \
-    --w_bit 4 --q_group_size 128 --numeric_type nf4 \
+    --w_bit 4 --q_group_size 128 --numeric_type nf4 --no_zero_point \
     --run_awq --dump_awq awq_cache/llama3-8b-w4-g128-nf4.pt
 
 python -m awq.entry --model_path meta-llama/Meta-Llama-3-8B \
     --tasks wikitext \
-    --w_bit 4 --q_group_size 128 --numeric_type nf4 \
+    --w_bit 4 --q_group_size 128 --numeric_type nf4 --no_zero_point \
     --load_awq awq_cache/llama3-8b-w4-g128-nf4.pt \
     --q_backend fake
 ```
-6.508485317230225
+6.513875961303711
 
 ## AWQ - FP4
 ```
