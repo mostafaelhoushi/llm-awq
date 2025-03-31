@@ -217,11 +217,25 @@ def pseudo_int_quantize_tensor(
         return w
 
 def pseudo_nf4_quantize_tensor(
-    w, q_group_size=-1, get_scale_zp=False,
+    w, q_group_size=-1, get_scale_zp=False, manual=True,
 ):
     import bitsandbytes
-    w_nf4, state_nf4 = bitsandbytes.functional.quantize_nf4(w, blocksize=q_group_size)
-    w_deq = bitsandbytes.functional.dequantize_nf4(w_nf4, quant_state=state_nf4, blocksize=q_group_size)
+    if manual:
+        org_w_shape = w.shape
+        if q_group_size > 0:
+            assert org_w_shape[-1] % q_group_size == 0
+            w = w.reshape(-1, q_group_size)
+        max_val = w.abs().amax(dim=1, keepdim=True)
+        max_val = max_val.clamp(min=1e-5)
+        scales = max_val
+        w_scaled = w / scales
+        w_nf4 = nf4_round(w_scaled)
+        w_deq = w_nf4 * scales
+        w_deq = w_deq.reshape(org_w_shape)
+        state_nf4 = scales
+    else:
+        w_nf4, state_nf4 = bitsandbytes.functional.quantize_nf4(w, blocksize=q_group_size)
+        w_deq = bitsandbytes.functional.dequantize_nf4(w_nf4, quant_state=state_nf4, blocksize=q_group_size)
 
     if get_scale_zp:
         return w_deq, state_nf4
