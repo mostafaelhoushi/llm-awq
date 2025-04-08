@@ -132,9 +132,13 @@ def any_lut_quantize_tensor(tensor, n_bit=8, n_jobs=-1):
 
 def nf4_round(x):
   nf4_lut = [-1.0, -0.6961928009986877, -0.5250730514526367, -0.39491748809814453, -0.28444138169288635, -0.18477343022823334, -0.09105003625154495, 0.0, 0.07958029955625534, 0.16093020141124725, 0.24611230194568634, 0.33791524171829224, 0.44070982933044434, 0.5626170039176941, 0.7229568362236023, 1.0]
-  # List of allowed values
-  value_list = nf4_lut
+  return grid_round(x, nf4_lut)
 
+def fp4_round(x):
+    fp4_lut = [0.0, 0.25, -0.25, 0.5, -0.5, 0.75, -0.75, 1.0, -1.0,  1.5, -1.5, 2.0, -2.0, 4.0, -4.0]
+    return grid_round(x, fp4_lut)
+
+def grid_round(x, value_list):
   # Convert list to tensor for broadcasting
   values = torch.tensor(value_list).to(x)
 
@@ -151,25 +155,24 @@ def nf4_round(x):
 
 # core quantization method (simulated quantization)
 def pseudo_quantize_tensor(
-    w, n_bit=8, zero_point=True, q_group_size=-1, inplace=False, get_scale_zp=False, numeric_type="int",
+    w, n_bit=8, zero_point=True, q_group_size=-1, inplace=False, get_scale_zp=False, numeric_type="int", **kwargs,
 ):
     if numeric_type == "int":
-        return pseudo_int_quantize_tensor(w, n_bit=n_bit, zero_point=zero_point, q_group_size=q_group_size, inplace=inplace, get_scale_zp=get_scale_zp)
+        return pseudo_int_quantize_tensor(w, n_bit=n_bit, zero_point=zero_point, q_group_size=q_group_size, inplace=inplace, get_scale_zp=get_scale_zp, **kwargs)
     elif numeric_type == "any":
         assert inplace is False
-        return pseudo_any_quantize_tensor(w, n_bit=n_bit, zero_point=zero_point, q_group_size=q_group_size, get_scale_zp=get_scale_zp)
+        return pseudo_any_quantize_tensor(w, n_bit=n_bit, zero_point=zero_point, q_group_size=q_group_size, get_scale_zp=get_scale_zp, **kwargs)
     elif numeric_type == "nf4":
         assert n_bit == 4
         assert zero_point is False
         assert inplace is False
-        return pseudo_nf4_quantize_tensor(w, q_group_size=q_group_size, get_scale_zp=get_scale_zp)
+        return pseudo_nf4_quantize_tensor(w, q_group_size=q_group_size, get_scale_zp=get_scale_zp, **kwargs)
     elif numeric_type == "fp4":
         assert n_bit == 4
         assert zero_point is False
         assert inplace is False
-        return pseudo_fp4_quantize_tensor(w, q_group_size=q_group_size, get_scale_zp=get_scale_zp)
+        return pseudo_fp4_quantize_tensor(w, q_group_size=q_group_size, get_scale_zp=get_scale_zp, **kwargs)
     else:
-    
         raise ValueError(f"Unsupported numeric_type {numeric_type}.")
 
 def pseudo_int_quantize_tensor(
@@ -217,7 +220,7 @@ def pseudo_int_quantize_tensor(
         return w
 
 def pseudo_nf4_quantize_tensor(
-    w, q_group_size=-1, get_scale_zp=False, manual=True,
+    w, q_group_size=-1, get_scale_zp=False, manual=False,
 ):
     import bitsandbytes
     if manual:
@@ -243,11 +246,27 @@ def pseudo_nf4_quantize_tensor(
         return w_deq
     
 def pseudo_fp4_quantize_tensor(
-    w, q_group_size=-1, get_scale_zp=False,
+    w, q_group_size=-1, get_scale_zp=False, manual=False,
 ):
-    import bitsandbytes
-    w_fp4, state_fp4 = bitsandbytes.functional.quantize_fp4(w, blocksize=q_group_size)
-    w_deq = bitsandbytes.functional.dequantize_fp4(w_fp4, quant_state=state_fp4, blocksize=q_group_size)
+    if manual:
+        org_w_shape = w.shape
+        if q_group_size > 0:
+            assert org_w_shape[-1] % q_group_size == 0
+            w = w.reshape(-1, q_group_size)
+        max_val = w.abs().amax(dim=1, keepdim=True)
+        max_val = max_val.clamp(min=1e-5)
+        max_int = 4.0
+        min_int = -4.0
+        scales = max_val / max_int
+        w_scaled = w / scales
+        w_q = fp4_round(w_scaled)
+        w_deq = w_q * scales
+        w_deq = w_deq.reshape(org_w_shape)
+        state_fp4 = scales
+    else:
+        import bitsandbytes
+        w_fp4, state_fp4 = bitsandbytes.functional.quantize_fp4(w, blocksize=q_group_size)
+        w_deq = bitsandbytes.functional.dequantize_fp4(w_fp4, quant_state=state_fp4, blocksize=q_group_size)
 
     if get_scale_zp:
         return w_deq, state_fp4

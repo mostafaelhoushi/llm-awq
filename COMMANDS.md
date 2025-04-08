@@ -114,6 +114,7 @@ python -m awq.entry --model_path facebook/opt-125m \
     --load_awq awq_cache/opt-125m-w4-g128-any4.pt \
     --q_backend fake
 ```
+35.94853973388672
 
 # Llama2 7B
 ## Baseline
@@ -191,7 +192,16 @@ python -m awq.entry --model_path meta-llama/Llama-2-7b-hf \
     --load_awq awq_cache/llama2-7b-w4-g128.pt \
     --q_backend fake
 ```
-5.50054931640625
+5.566501140594482
+
+```
+python -m awq.entry --model_path meta-llama/Llama-2-7b-hf \
+    --tasks wikitext \
+    --w_bit 4 --q_group_size 128 --numeric_type any \
+    --load_awq awq_cache/llama2-7b-w4-g128-nf4.pt \
+    --q_backend fake
+```
+
 
 # Llama3 8B
 ```
@@ -242,24 +252,24 @@ python -m awq.entry --model_path meta-llama/Meta-Llama-3-8B \
 ```
 python -m awq.entry --model_path meta-llama/Meta-Llama-3-8B \
     --tasks wikitext \
-    --w_bit 4 --q_group_size 128 --numeric_type fp4 \
+    --w_bit 4 --q_group_size 128 --numeric_type fp4 --no_zero_point \
     --load_awq awq_cache/llama3-8b-w4-g128.pt \
     --q_backend fake
 ```
-6.858159065246582
+6.8685383796691895
 
 ```
 python -m awq.entry --model_path meta-llama/Meta-Llama-3-8B \
-    --w_bit 4 --q_group_size 128 --numeric_type fp4 \
+    --w_bit 4 --q_group_size 128 --numeric_type fp4 --no_zero_point \
     --run_awq --dump_awq awq_cache/llama3-8b-w4-g128-fp4.pt
 
 python -m awq.entry --model_path meta-llama/Meta-Llama-3-8B \
     --tasks wikitext \
-    --w_bit 4 --q_group_size 128 --numeric_type fp4 \
+    --w_bit 4 --q_group_size 128 --numeric_type fp4 --no_zero_point \
     --load_awq awq_cache/llama3-8b-w4-g128-fp4.pt \
     --q_backend fake
 ```
-6.840137481689453
+6.830040454864502
 
 ## AWQ - ANY4
 ```
@@ -269,7 +279,7 @@ python -m awq.entry --model_path meta-llama/Meta-Llama-3-8B \
     --load_awq awq_cache/llama3-8b-w4-g128.pt \
     --q_backend fake
 ```
-6.191517353057861
+6.375863075256348
 
 ## AWQ - INT2
 ```
@@ -285,3 +295,29 @@ python -m awq.entry --model_path meta-llama/Meta-Llama-3-8B \
 ```
 1706289.375
 
+# Llama3.2 1B
+## Baseline
+```
+python -m awq.entry --model_path unsloth/Llama-3.2-1B \
+    --tasks wikitext
+```
+9.751089096069336
+
+## FP4
+```
+python -m awq.entry --model_path unsloth/Llama-3.2-1B \
+    --tasks wikitext \
+    --w_bit 4 --q_group_size 32 --numeric_type fp4 --no_zero_point \
+    --q_backend fake
+```
+12.740935325622559
+
+
+## NF4
+```
+python -m awq.entry --model_path unsloth/Llama-3.2-1B \
+    --tasks wikitext \
+    --w_bit 4 --q_group_size 32 --numeric_type nf4 --no_zero_point \
+    --q_backend fake
+```
+10.620597839355469
