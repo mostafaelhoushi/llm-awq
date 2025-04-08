@@ -29,6 +29,12 @@ prompt4 = """- Fiction: \"Beneath the sands of the great desert, an explorer unc
 - Facts: \"The Amazon rainforest produces around 20% of the world's oxygen. It is often referred to as the planet’s lungs and spans across nine countries in South America...\"
 """
 
+prompt5 = """- Fiction: \"Every Tuesday, the moon whispered secrets to Nora through her radio. One night, it warned her that someone else was listening too...\"
+- News: \"In an unusual turn of events, a town in northern Sweden elected a moose as its honorary mayor to promote wildlife awareness and tourism...\"
+- Code: `function rollDice() {\n  return Math.floor(Math.random() * 6) + 1;\n}\nconsole.log(\"You rolled a\", rollDice());`
+- Math: ((12.5 + 3.3) / 2) ** 2 - sqrt(49) =
+- Facts: \"Octopuses have three hearts and blue blood. When they swim, two of their hearts actually stop beating, which is why they prefer crawling to swimming...\"
+"""
 
 
 def get_calib_dataset(data="pileval", tokenizer=None, n_samples=512, block_size=512):
@@ -47,6 +53,8 @@ def get_calib_dataset(data="pileval", tokenizer=None, n_samples=512, block_size=
         dataset = Dataset.from_list([{"text": prompt3}])
     elif data == "prompt4":
         dataset = Dataset.from_list([{"text": prompt4}])
+    elif data == "prompt5":
+        dataset = Dataset.from_list([{"text": prompt5}])
     else:
         raise NotImplementedError
     dataset = dataset.shuffle(seed=42)

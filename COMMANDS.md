@@ -406,6 +406,19 @@ python -m awq.entry --model_path meta-llama/Meta-Llama-3-8B \
 ```
 6.858635425567627
 
+```
+python -m awq.entry --model_path meta-llama/Meta-Llama-3-8B \
+    --w_bit 4 --q_group_size 128 --calib_data prompt5 \
+    --run_awq --dump_awq awq_cache/llama3-8b-w4-g128-prompt5-n1.pt
+
+python -m awq.entry --model_path meta-llama/Meta-Llama-3-8B \
+    --tasks wikitext \
+    --w_bit 4 --q_group_size 128 \
+    --load_awq awq_cache/llama3-8b-w4-g128-prompt5-n1.pt \
+    --q_backend fake
+```
+6.931275367736816
+
 ## AWQ - NF4
 ```
 python -m awq.entry --model_path meta-llama/Meta-Llama-3-8B \
