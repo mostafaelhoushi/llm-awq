@@ -84,6 +84,58 @@ python -m awq.entry --model_path facebook/opt-125m \
 
 ```
 python -m awq.entry --model_path facebook/opt-125m \
+    --w_bit 4 --q_group_size 128 --calib_data c4 --n_samples 8 \
+    --run_awq --dump_awq awq_cache/opt-125m-w4-g128-c4-n8.pt
+
+python -m awq.entry --model_path facebook/opt-125m \
+    --tasks wikitext \
+    --w_bit 4 --q_group_size 128 \
+    --load_awq awq_cache/opt-125m-w4-g128-c4-n8.pt \
+    --q_backend fake
+```
+29.143884658813477
+
+```
+python -m awq.entry --model_path facebook/opt-125m \
+    --w_bit 4 --q_group_size 128 --calib_data c4 --n_samples 4 \
+    --run_awq --dump_awq awq_cache/opt-125m-w4-g128-c4-n4.pt
+
+python -m awq.entry --model_path facebook/opt-125m \
+    --tasks wikitext \
+    --w_bit 4 --q_group_size 128 \
+    --load_awq awq_cache/opt-125m-w4-g128-c4-n4.pt \
+    --q_backend fake
+```
+36.53861618041992
+
+```
+python -m awq.entry --model_path facebook/opt-125m \
+    --w_bit 4 --q_group_size 128 --calib_data c4 --n_samples 2 \
+    --run_awq --dump_awq awq_cache/opt-125m-w4-g128-c4-n2.pt
+
+python -m awq.entry --model_path facebook/opt-125m \
+    --tasks wikitext \
+    --w_bit 4 --q_group_size 128 \
+    --load_awq awq_cache/opt-125m-w4-g128-c4-n2.pt \
+    --q_backend fake
+```
+53.01172637939453
+
+```
+python -m awq.entry --model_path facebook/opt-125m \
+    --w_bit 4 --q_group_size 128 --calib_data c4 --n_samples 1 \
+    --run_awq --dump_awq awq_cache/opt-125m-w4-g128-c4-n1.pt
+
+python -m awq.entry --model_path facebook/opt-125m \
+    --tasks wikitext \
+    --w_bit 4 --q_group_size 128 \
+    --load_awq awq_cache/opt-125m-w4-g128-c4-n1.pt \
+    --q_backend fake
+```
+66.12118530273438
+
+```
+python -m awq.entry --model_path facebook/opt-125m \
     --w_bit 4 --q_group_size 128 --calib_data prompt1 \
     --run_awq --dump_awq awq_cache/opt-125m-w4-g128-prompt1.pt
 

@@ -54,6 +54,7 @@ parser.add_argument("--numeric_type", type=str, default="int")
 parser.add_argument("--no_zero_point", action="store_true", help="disable zero_point")
 parser.add_argument("--q_backend", type=str, default="fake", choices=["fake", "real"])
 parser.add_argument("--calib_data", type=str, default="pileval")
+parser.add_argument("--n_samples", type=int, default=128)
 # save/load real quantized weights
 parser.add_argument("--dump_quant", type=str, default=None, help="save quantized model")
 parser.add_argument(
@@ -208,7 +209,7 @@ def build_model_and_enc(model_path, dtype):
                 enc,
                 w_bit=args.w_bit,
                 q_config=q_config,
-                n_samples=128,
+                n_samples=args.n_samples,
                 seqlen=512,
                 calib_data=args.calib_data,
             )
