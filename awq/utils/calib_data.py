@@ -14,6 +14,9 @@ def get_calib_dataset(data="pileval", tokenizer=None, n_samples=512, block_size=
         dataset = load_dataset("mit-han-lab/pile-val-backup", split="validation")
     elif data == "wikitext2":
         dataset = load_dataset("wikitext", "wikitext-2-raw-v1", split="train")
+    elif data == "c4":
+        dataset = load_dataset("allenai/c4", data_files={"train": "en/c4-train.00000-of-01024.json.gz"}, split="train",
+    )
     elif data == "prompt1":
         dataset = Dataset.from_list([{"text": prompt1}])
     else:
