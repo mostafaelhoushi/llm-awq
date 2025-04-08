@@ -12,6 +12,8 @@ prompt1 = """- Fiction: \"Once upon a time, a girl named Alice was living alone 
 def get_calib_dataset(data="pileval", tokenizer=None, n_samples=512, block_size=512):
     if data == "pileval":
         dataset = load_dataset("mit-han-lab/pile-val-backup", split="validation")
+    elif data == "wikitext2":
+        dataset = load_dataset("wikitext", "wikitext-2-raw-v1", split="train")
     elif data == "prompt1":
         dataset = Dataset.from_list([{"text": prompt1}])
     else:
