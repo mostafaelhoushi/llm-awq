@@ -56,6 +56,19 @@ python -m awq.entry --model_path facebook/opt-125m \
 ```
 29.094009399414062
 
+```
+python -m awq.entry --model_path facebook/opt-125m \
+    --w_bit 4 --q_group_size 128 --calib_data prompt1 \
+    --run_awq --dump_awq awq_cache/opt-125m-w4-g128-prompt1.pt
+
+python -m awq.entry --model_path facebook/opt-125m \
+    --tasks wikitext \
+    --w_bit 4 --q_group_size 128 \
+    --load_awq awq_cache/opt-125m-w4-g128-prompt1.pt \
+    --q_backend fake
+```
+59.10227584838867
+
 ## AWQ - NF4
 ```
 python -m awq.entry --model_path facebook/opt-125m \
