@@ -55,6 +55,8 @@ def get_calib_dataset(data="pileval", tokenizer=None, n_samples=512, block_size=
         dataset = Dataset.from_list([{"text": prompt4}])
     elif data == "prompt5":
         dataset = Dataset.from_list([{"text": prompt5}])
+    elif data == "prompts":
+        dataset = Dataset.from_list([{"text": prompt1}, {"text": prompt2}, {"text": prompt4}, {"text": prompt5}])
     else:
         raise NotImplementedError
     dataset = dataset.shuffle(seed=42)
